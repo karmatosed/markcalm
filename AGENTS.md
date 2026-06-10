@@ -179,7 +179,7 @@ Public installs use **`build/MarkCalm.dmg`** from [GitHub Releases](https://gith
 | Who | Action |
 |-----|--------|
 | **Build** | `./scripts/build-dmg.sh` |
-| **Publish** | `gh release create v0.1.0 build/MarkCalm.dmg --notes "…"` or GitHub Releases UI |
+| **Publish** | Push tag `v*` (unsigned CI) or `gh release create …` |
 | **User install** | Right-click → Open once — [README § Install](../README.md#install-required-for-unsigned-builds) |
 
 Release notes **must** state: unsigned preview, one-time Gatekeeper step, link to install instructions.
@@ -191,7 +191,7 @@ export APPLE_TEAM_ID=… APPLE_ID=… APPLE_APP_SPECIFIC_PASSWORD=…
 ./scripts/build-release-dmg.sh
 ```
 
-CI: GitHub secrets → tag `v*`. See README § Apple Developer.
+CI: push tag `v*` → **unsigned** build. Signed: **Actions → Release** with **signed** enabled + GitHub secrets. See README § Apple Developer.
 
 ---
 

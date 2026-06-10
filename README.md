@@ -83,6 +83,8 @@ git tag v0.1.0 && git push origin v0.1.0
 
 The **Release** workflow builds, signs, notarizes, and attaches `MarkCalm.dmg` to the release.
 
+> **Note:** Tag pushes (`git push origin v*`) build **unsigned** DMGs by default. Signed releases require **Actions → Release → Run workflow** with **signed** checked, after Apple secrets are configured.
+
 ---
 
 ### Publish a release (quick reference)
@@ -95,8 +97,8 @@ The **Release** workflow builds, signs, notarizes, and attaches `MarkCalm.dmg` t
 # After Apple Developer is Active: signed + notarized
 ./scripts/build-release-dmg.sh
 
-# Tag → GitHub Actions (signed when secrets configured; unsigned via workflow_dispatch)
-git tag v0.1.0 && git push origin v0.1.0
+# Tag → GitHub Actions (unsigned by default; signed via Actions → Release → signed ✓)
+git tag v0.1.1 && git push origin v0.1.1
 ```
 
 ---

@@ -7,16 +7,17 @@ on:
   workflow_dispatch:
     inputs:
       signed:
-        description: 'Signed + notarized (requires Apple secrets in repo settings)'
+        description: 'Signed + notarized (requires Apple secrets — only when Developer membership is Active)'
         type: boolean
-        default: true
+        default: false
 
 permissions:
   contents: write
 
 jobs:
-  release-signed:
-    if: github.event_name == 'push' || inputs.signed
+  release-unsigned:
+    # Default: tag pushes and manual runs use unsigned builds until Apple secrets are configured.
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && !inputs.signed)
     runs-on: macos-latest
     steps:
       - name: Checkout
@@ -24,6 +25,71 @@ jobs:
 
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+
+      - name: Build unsigned DMG
+        run: |
+          chmod +x scripts/build-dmg.sh
+          ./scripts/build-dmg.sh
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MarkCalm-dmg
+          path: build/MarkCalm.dmg
+          if-no-files-found: error
+
+      - name: Upload to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/MarkCalm.dmg
+          generate_release_notes: true
+          body: |
+            ## Unsigned preview
+
+            Apple Developer membership pending — this build is **not notarized**.
+
+            ### Install
+            1. Download `MarkCalm.dmg` below
+            2. Drag **MarkCalm** to **Applications**
+            3. **Right-click MarkCalm → Open** (first time only) → **Open**
+
+            Or: `xattr -cr /Applications/MarkCalm.app`
+
+            Full docs: https://github.com/${{ github.repository }}#download-markcalm-unsigned-preview
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  release-signed:
+    # Manual only — requires APPLE_* secrets in repo settings.
+    if: github.event_name == 'workflow_dispatch' && inputs.signed
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+
+      - name: Verify Apple secrets
+        env:
+          APPLE_CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+        run: |
+          missing=0
+          for var in APPLE_CERTIFICATE_BASE64 APPLE_CERTIFICATE_PASSWORD APPLE_TEAM_ID APPLE_ID APPLE_APP_SPECIFIC_PASSWORD; do
+            if [ -z "${!var}" ]; then
+              echo "::error::Missing secret: $var"
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            echo "::error::Add Apple secrets in repo Settings → Secrets → Actions before running a signed release."
+            exit 1
+          fi
 
       - name: Import code signing certificate
         uses: apple-actions/import-codesign-certs@v3
@@ -43,7 +109,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: MarkCalm-dmg
+          name: MarkCalm-dmg-signed
           path: build/MarkCalm.dmg
           if-no-files-found: error
 
@@ -55,25 +121,3 @@ jobs:
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  release-unsigned:
-    if: github.event_name == 'workflow_dispatch' && !inputs.signed
-    runs-on: macos-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
-
-      - name: Build unsigned DMG
-        run: |
-          chmod +x scripts/build-dmg.sh
-          ./scripts/build-dmg.sh
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: MarkCalm-dmg-unsigned
-          path: build/MarkCalm.dmg
-          if-no-files-found: error
