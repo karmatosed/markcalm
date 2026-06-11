@@ -16,7 +16,7 @@ struct SettingsView: View {
                 .pickerStyle(.segmented)
             }
 
-            Section("Reading") {
+            Section {
                 Toggle("Show reading progress", isOn: $appSettings.showProgress)
 
                 Picker("Progress bar position", selection: $appSettings.progressPosition) {
@@ -26,6 +26,10 @@ struct SettingsView: View {
                 }
                 .pickerStyle(.segmented)
                 .disabled(!appSettings.showProgress)
+            } header: {
+                Text("Reading")
+            } footer: {
+                Text("Turn on “Show reading progress” to display the bar. Position only applies when it is enabled.")
             }
         }
         .formStyle(.grouped)

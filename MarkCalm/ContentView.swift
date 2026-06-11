@@ -14,7 +14,11 @@ struct ContentView: View {
     }
 
     var body: some View {
-        ZStack(alignment: appSettings.progressPosition == .top ? .top : .bottom) {
+        VStack(spacing: 0) {
+            if appSettings.showProgress, appSettings.progressPosition == .top {
+                ProgressBar(value: scrollProgress)
+            }
+
             TrackedScrollView(progress: $scrollProgress) {
                 ReadingContent(
                     markdown: document.processed.body,
@@ -22,13 +26,8 @@ struct ContentView: View {
                 )
             }
 
-            if appSettings.showProgress {
+            if appSettings.showProgress, appSettings.progressPosition == .bottom {
                 ProgressBar(value: scrollProgress)
-                    .frame(
-                        maxWidth: .infinity,
-                        maxHeight: .infinity,
-                        alignment: appSettings.progressPosition == .top ? .top : .bottom
-                    )
             }
         }
         .background(Color(nsColor: .windowBackgroundColor))
@@ -49,14 +48,14 @@ private struct ProgressBar: View {
         GeometryReader { geometry in
             ZStack(alignment: .leading) {
                 Rectangle()
-                    .fill(Color.primary.opacity(0.1))
+                    .fill(Color.primary.opacity(0.15))
 
                 Rectangle()
-                    .fill(Color.accentColor.opacity(0.55))
+                    .fill(Color.accentColor)
                     .frame(width: geometry.size.width * min(max(value, 0), 1))
             }
         }
-        .frame(height: 3)
+        .frame(height: 4)
         .allowsHitTesting(false)
     }
 }
