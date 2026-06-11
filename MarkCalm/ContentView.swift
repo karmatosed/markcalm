@@ -24,6 +24,7 @@ struct ContentView: View {
                 baseURL: baseURL
             )
         }
+        .id(document.processed.body)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .safeAreaInset(edge: progressEdge, spacing: 0) {
             if appSettings.showProgress {

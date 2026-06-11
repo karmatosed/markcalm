@@ -5,4 +5,3 @@ DerivedData/
 .build/
 *.xcodeproj/project.xcworkspace/xcuserdata/
 build/
-Package.resolved

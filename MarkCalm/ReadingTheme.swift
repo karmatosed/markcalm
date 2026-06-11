@@ -17,8 +17,9 @@ struct ReadingContent: View {
     var body: some View {
         Markdown(markdown, baseURL: baseURL, imageBaseURL: baseURL)
             .markdownTheme(ReadingTheme.calm)
+            .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: 680, alignment: .leading)
-            .frame(maxWidth: .infinity)
+            .frame(maxWidth: .infinity, alignment: .top)
             .padding(.horizontal, 40)
             .padding(.vertical, 48)
             .textSelection(.enabled)

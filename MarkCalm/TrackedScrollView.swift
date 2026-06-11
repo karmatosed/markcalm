@@ -26,6 +26,7 @@ struct TrackedScrollView<Content: View>: NSViewRepresentable {
         let container = FlippedContainerView()
         let hostingView = NSHostingView(rootView: content)
         hostingView.translatesAutoresizingMaskIntoConstraints = true
+        hostingView.sizingOptions = .minSize
         container.addSubview(hostingView)
 
         scrollView.documentView = container
@@ -46,8 +47,6 @@ struct TrackedScrollView<Content: View>: NSViewRepresentable {
     }
 
     func updateNSView(_ scrollView: NSScrollView, context: Context) {
-        // Scroll progress updates re-render the parent view; only swap content here.
-        // Relayout on every scroll was resetting the clip view and blocking scrolling.
         context.coordinator.hostingView?.rootView = content
     }
 
@@ -70,15 +69,13 @@ struct TrackedScrollView<Content: View>: NSViewRepresentable {
         }
 
         @objc func scrollDidChange() {
-            // Relayout when the viewport width changes; no-op while only scrolling.
-            updateLayout()
+            updateLayoutIfWidthChanged()
             updateProgress()
         }
 
         func scheduleInitialLayoutRefresh() {
             cancelPendingLayoutRefresh()
 
-            // Markdown layout can settle over several frames after first load.
             let delays: [TimeInterval] = [0, 0.1, 0.35]
             for delay in delays {
                 let work = DispatchWorkItem { [weak self] in
@@ -95,11 +92,18 @@ struct TrackedScrollView<Content: View>: NSViewRepresentable {
         }
 
         func refreshLayoutAndProgress() {
-            updateLayout()
+            updateLayout(force: true)
             updateProgress()
         }
 
-        func updateLayout() {
+        func updateLayoutIfWidthChanged() {
+            guard let scrollView else { return }
+            let width = max(scrollView.contentView.bounds.width, 1)
+            guard abs(width - lastLayoutWidth) >= 1 else { return }
+            updateLayout(force: true)
+        }
+
+        func updateLayout(force: Bool = false) {
             guard let scrollView, let containerView, let hostingView else { return }
 
             let clipView = scrollView.contentView
@@ -108,9 +112,10 @@ struct TrackedScrollView<Content: View>: NSViewRepresentable {
 
             let contentHeight = Self.measuredContentHeight(hostingView: hostingView, width: width)
             let visibleHeight = clipView.bounds.height
-            let totalHeight = max(contentHeight, visibleHeight)
+            let documentHeight = max(contentHeight, visibleHeight)
 
-            if abs(width - lastLayoutWidth) < 1,
+            if !force,
+               abs(width - lastLayoutWidth) < 1,
                abs(contentHeight - lastContentHeight) < 1 {
                 return
             }
@@ -120,14 +125,14 @@ struct TrackedScrollView<Content: View>: NSViewRepresentable {
             lastLayoutWidth = width
             lastContentHeight = contentHeight
 
-            containerView.frame = NSRect(x: 0, y: 0, width: width, height: totalHeight)
+            containerView.frame = NSRect(x: 0, y: 0, width: width, height: documentHeight)
             hostingView.frame = NSRect(x: 0, y: 0, width: width, height: contentHeight)
 
             if scrollView.documentView !== containerView {
                 scrollView.documentView = containerView
             }
 
-            clipView.setBoundsOrigin(savedOrigin)
+            clipView.scroll(to: savedOrigin)
             scrollView.reflectScrolledClipView(clipView)
         }
 
@@ -149,15 +154,21 @@ struct TrackedScrollView<Content: View>: NSViewRepresentable {
             hostingView: NSHostingView<Content>,
             width: CGFloat
         ) -> CGFloat {
-            hostingView.setFrameSize(NSSize(width: width, height: 1))
+            hostingView.sizingOptions = .minSize
+            hostingView.setFrameSize(NSSize(width: width, height: 0))
             hostingView.layoutSubtreeIfNeeded()
 
-            let fitting = hostingView.fittingSize
-            if fitting.height > 1 {
-                return ceil(fitting.height)
+            let height = hostingView.fittingSize.height
+            if height.isFinite, height > 1 {
+                return ceil(height)
             }
 
-            return ceil(max(hostingView.intrinsicContentSize.height, 1))
+            let intrinsic = hostingView.intrinsicContentSize.height
+            if intrinsic.isFinite, intrinsic > 1 {
+                return ceil(intrinsic)
+            }
+
+            return 1
         }
     }
 }
