@@ -13,20 +13,20 @@ struct ContentView: View {
         fileURL?.deletingLastPathComponent()
     }
 
+    private var progressEdge: VerticalEdge {
+        appSettings.progressPosition == .top ? .top : .bottom
+    }
+
     var body: some View {
-        VStack(spacing: 0) {
-            if appSettings.showProgress, appSettings.progressPosition == .top {
-                ProgressBar(value: scrollProgress)
-            }
-
-            TrackedScrollView(progress: $scrollProgress) {
-                ReadingContent(
-                    markdown: document.processed.body,
-                    baseURL: baseURL
-                )
-            }
-
-            if appSettings.showProgress, appSettings.progressPosition == .bottom {
+        TrackedScrollView(progress: $scrollProgress) {
+            ReadingContent(
+                markdown: document.processed.body,
+                baseURL: baseURL
+            )
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .safeAreaInset(edge: progressEdge, spacing: 0) {
+            if appSettings.showProgress {
                 ProgressBar(value: scrollProgress)
             }
         }

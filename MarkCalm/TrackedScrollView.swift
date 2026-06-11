@@ -40,15 +40,15 @@ struct TrackedScrollView<Content: View>: NSViewRepresentable {
             object: scrollView.contentView
         )
 
-        context.coordinator.scheduleLayoutRefresh()
+        context.coordinator.scheduleInitialLayoutRefresh()
 
         return scrollView
     }
 
     func updateNSView(_ scrollView: NSScrollView, context: Context) {
+        // Scroll progress updates re-render the parent view; only swap content here.
+        // Relayout on every scroll was resetting the clip view and blocking scrolling.
         context.coordinator.hostingView?.rootView = content
-        context.coordinator.hostingView?.invalidateIntrinsicContentSize()
-        context.coordinator.scheduleLayoutRefresh()
     }
 
     static func dismantleNSView(_ scrollView: NSScrollView, coordinator: Coordinator) {
@@ -62,20 +62,24 @@ struct TrackedScrollView<Content: View>: NSViewRepresentable {
         weak var containerView: FlippedContainerView?
         var hostingView: NSHostingView<Content>?
         private var layoutRefreshWorkItems: [DispatchWorkItem] = []
+        private var lastLayoutWidth: CGFloat = 0
+        private var lastContentHeight: CGFloat = 0
 
         init(progress: Binding<CGFloat>) {
             self.progress = progress
         }
 
         @objc func scrollDidChange() {
+            // Relayout when the viewport width changes; no-op while only scrolling.
+            updateLayout()
             updateProgress()
         }
 
-        func scheduleLayoutRefresh() {
+        func scheduleInitialLayoutRefresh() {
             cancelPendingLayoutRefresh()
 
-            // Markdown layout can settle over several frames after load or content changes.
-            let delays: [TimeInterval] = [0, 0.05, 0.15, 0.35, 0.75]
+            // Markdown layout can settle over several frames after first load.
+            let delays: [TimeInterval] = [0, 0.1, 0.35]
             for delay in delays {
                 let work = DispatchWorkItem { [weak self] in
                     self?.refreshLayoutAndProgress()
@@ -98,16 +102,33 @@ struct TrackedScrollView<Content: View>: NSViewRepresentable {
         func updateLayout() {
             guard let scrollView, let containerView, let hostingView else { return }
 
-            let width = max(scrollView.contentView.bounds.width, 1)
+            let clipView = scrollView.contentView
+            let width = max(clipView.bounds.width, 1)
             hostingView.layoutSubtreeIfNeeded()
 
             let contentHeight = Self.measuredContentHeight(hostingView: hostingView, width: width)
-            let visibleHeight = scrollView.contentView.bounds.height
+            let visibleHeight = clipView.bounds.height
             let totalHeight = max(contentHeight, visibleHeight)
+
+            if abs(width - lastLayoutWidth) < 1,
+               abs(contentHeight - lastContentHeight) < 1 {
+                return
+            }
+
+            let savedOrigin = clipView.bounds.origin
+
+            lastLayoutWidth = width
+            lastContentHeight = contentHeight
 
             containerView.frame = NSRect(x: 0, y: 0, width: width, height: totalHeight)
             hostingView.frame = NSRect(x: 0, y: 0, width: width, height: contentHeight)
-            scrollView.documentView = containerView
+
+            if scrollView.documentView !== containerView {
+                scrollView.documentView = containerView
+            }
+
+            clipView.setBoundsOrigin(savedOrigin)
+            scrollView.reflectScrolledClipView(clipView)
         }
 
         func updateProgress() {
@@ -121,7 +142,6 @@ struct TrackedScrollView<Content: View>: NSViewRepresentable {
                 return
             }
 
-            // Flipped document coordinates: origin.y grows as the reader scrolls down.
             progress.wrappedValue = min(max(visibleRect.origin.y / scrollable, 0), 1)
         }
 
