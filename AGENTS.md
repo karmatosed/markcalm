@@ -72,6 +72,8 @@ Declared in `MarkCalm.xcodeproj/project.pbxproj`:
 | MarkdownUI | `https://github.com/gonzalezreal/swift-markdown-ui` | 2.4.1 |
 | Yams | `https://github.com/jpsim/Yams` | 5.0.0 |
 
+`Package.resolved` is committed at `MarkCalm.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved` — required for Xcode Cloud and CI when automatic resolution is disabled. Commit updates after changing dependencies in Xcode.
+
 If packages fail: **File → Packages → Reset Package Caches** in Xcode, or re-run `-resolvePackageDependencies`.
 
 ---
@@ -172,26 +174,28 @@ Do not claim "builds" or "tests pass" without running these commands (or equival
 
 ## Distribution
 
-### Current: unsigned preview (Apple Developer pending)
+### Public releases: signed + notarized
 
-Public installs use **`build/MarkCalm.dmg`** from [GitHub Releases](https://github.com/karmatosed/markcalm/releases).
+Latest: [GitHub Releases](https://github.com/karmatosed/markcalm/releases/latest) (Developer ID, team `K2967B5G85`). Users drag to Applications and double-click — no Gatekeeper workaround.
 
 | Who | Action |
 |-----|--------|
-| **Build** | `./scripts/build-dmg.sh` |
-| **Publish** | Push tag `v*` (unsigned CI) or `gh release create …` |
-| **User install** | Right-click → Open once — [README § Install](../README.md#install-required-for-unsigned-builds) |
-
-Release notes **must** state: unsigned preview, one-time Gatekeeper step, link to install instructions.
-
-### After Apple Developer is Active: signed + notarized
+| **Build** | `./scripts/build-release-dmg.sh` (requires `APPLE_TEAM_ID`, `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`) |
+| **Publish** | `gh release create … build/MarkCalm.dmg` or `gh release upload … --clobber` |
+| **User install** | Drag to Applications, double-click — [README § Install](../README.md#install) |
 
 ```bash
-export APPLE_TEAM_ID=… APPLE_ID=… APPLE_APP_SPECIFIC_PASSWORD=…
+export APPLE_TEAM_ID=K2967B5G85 APPLE_ID=… APPLE_APP_SPECIFIC_PASSWORD=…
 ./scripts/build-release-dmg.sh
 ```
 
-CI: push tag `v*` → **unsigned** build. Signed: **Actions → Release** with **signed** enabled + GitHub secrets. See README § Apple Developer.
+### CI / local testing: unsigned
+
+Tag pushes (`git push origin v*`) → GitHub Actions builds **unsigned** `.dmg` via `./scripts/build-dmg.sh`. Not for public distribution unless clearly labeled unsigned in release notes.
+
+Optional signed CI: **Actions → Release** with **signed** enabled + `APPLE_*` GitHub secrets.
+
+See README § [Publishing releases](../README.md#publishing-releases).
 
 ---
 

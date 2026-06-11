@@ -2,104 +2,39 @@
 
 A calm, native macOS app for reading markdown files — one window per file, no IDE chrome.
 
-## Download MarkCalm (unsigned preview)
+## Download MarkCalm
 
-**Current release:** unsigned build while Apple Developer enrollment is pending. No Xcode needed to install.
+**Current release:** [v0.1.6 — signed & notarized](https://github.com/karmatosed/markcalm/releases/latest) (Developer ID). No Xcode needed to install.
 
 Download **`MarkCalm.dmg`** from **[GitHub Releases](https://github.com/karmatosed/markcalm/releases)**.
 
-### Install (required for unsigned builds)
-
-macOS will block the app the first time because it isn't notarized yet. This is normal — one extra step:
+### Install
 
 1. Open the `.dmg` and drag **MarkCalm** to **Applications**
-2. In Finder → **Applications**, **right-click MarkCalm → Open**  
-   (Do **not** double-click the first time.)
-3. Click **Open** in the dialog
+2. Double-click **MarkCalm** to open
+3. Use **File → Open** (⌘O) to read a `.md` file
 
-**Or** run once in Terminal:
+Signed releases pass macOS Gatekeeper — no right-click → Open step.
 
-```bash
-xattr -cr /Applications/MarkCalm.app
-```
+### Settings
 
-After that, open MarkCalm normally. Use **File → Open** (⌘O) to read a `.md` file.
+**MarkCalm → Settings** (⌘,)
 
-### Why unsigned?
+| Setting | Default | Notes |
+|---------|---------|-------|
+| Theme | System | System / Light / Dark |
+| Show reading progress | **Off** | Turn **on** to see the scroll progress bar |
+| Progress bar position | Top | Top or Bottom (when progress is enabled) |
 
-Apple Developer Program membership is **pending**. Once it becomes **Active**, future releases will be signed + notarized — drag to Applications and double-click, no right-click step.
+The reading progress bar only moves when the document is **taller than the window**.
 
----
+### Set as default for `.md` files
 
-## Apple Developer — signed releases (when membership is Active)
+1. Right-click any `.md` file in Finder
+2. **Get Info → Open with → MarkCalm**
+3. Click **Change All…**
 
-### 1. Configure Xcode (one time)
-
-1. **Xcode → Settings → Accounts** → add your Apple ID → select your **paid team**
-2. Open `MarkCalm.xcodeproj` → **MarkCalm** target → **Signing & Capabilities**
-3. Enable **Automatically manage signing**
-4. **Team:** your Developer Program team (not "Personal Team")
-5. **Xcode → Settings → Accounts → [your team] → Manage Certificates**
-6. Click **+** → **Developer ID Application** (creates the cert if missing)
-
-### 2. Release from Xcode (easiest first time)
-
-1. Scheme **MarkCalm**, destination **Any Mac (arm64, x86_64)**
-2. **Product → Archive**
-3. In Organizer → **Distribute App**
-4. **Custom** → **Developer ID** → **Upload** (notarize) → export `.app` or `.dmg`
-5. Upload to [GitHub Releases](https://github.com/karmatosed/markcalm/releases)
-
-### 3. Release from the command line
-
-```bash
-export APPLE_TEAM_ID="K2967B5G85"
-export APPLE_ID="you@example.com"
-export APPLE_APP_SPECIFIC_PASSWORD="xxxx-xxxx-xxxx-xxxx"  # appleid.apple.com → App-Specific Passwords
-
-./scripts/build-release-dmg.sh
-# → build/MarkCalm.dmg (signed + notarized)
-```
-
-### 4. Automated releases (GitHub Actions)
-
-Add these [repository secrets](https://github.com/karmatosed/markcalm/settings/secrets/actions):
-
-| Secret | Value |
-|--------|-------|
-| `APPLE_TEAM_ID` | 10-character Team ID |
-| `APPLE_ID` | Apple ID email |
-| `APPLE_APP_SPECIFIC_PASSWORD` | App-specific password |
-| `APPLE_CERTIFICATE_BASE64` | `base64 -i DeveloperID.p12 \| pbcopy` |
-| `APPLE_CERTIFICATE_PASSWORD` | Password used when exporting the `.p12` |
-
-Export the certificate: **Keychain Access** → **Developer ID Application** → export as `.p12`.
-
-Publish:
-
-```bash
-git tag v0.1.0 && git push origin v0.1.0
-```
-
-The **Release** workflow builds, signs, notarizes, and attaches `MarkCalm.dmg` to the release.
-
-> **Note:** Tag pushes (`git push origin v*`) build **unsigned** DMGs by default. Signed releases require **Actions → Release → Run workflow** with **signed** checked, after Apple secrets are configured.
-
----
-
-### Publish a release (quick reference)
-
-```bash
-# Current: unsigned (Apple Developer pending)
-./scripts/build-dmg.sh
-# → build/MarkCalm.dmg — upload to GitHub Releases
-
-# After Apple Developer is Active: signed + notarized
-./scripts/build-release-dmg.sh
-
-# Tag → GitHub Actions (unsigned by default; signed via Actions → Release → signed ✓)
-git tag v0.1.1 && git push origin v0.1.1
-```
+Or accept the in-app prompt the first time you open a markdown file.
 
 ---
 
@@ -107,9 +42,9 @@ git tag v0.1.1 && git push origin v0.1.1
 
 | Audience | What you need |
 |----------|----------------|
-| **Try the app** | [Download unsigned `.dmg`](#download-markcalm-unsigned-preview) from [Releases](https://github.com/karmatosed/markcalm/releases) — right-click → Open once |
+| **Try the app** | [Download the latest `.dmg`](https://github.com/karmatosed/markcalm/releases/latest) — drag to Applications, double-click |
 | **Developers** (build from source) | macOS 14+, Xcode 15+ — [Quick start](#quick-start) |
-| **Ship signed releases** | Apple Developer **Active** — [Signed releases](#apple-developer--signed-releases-when-membership-is-active) |
+| **Maintainers** (ship releases) | [Publishing](#publishing-releases) |
 
 ---
 
@@ -146,7 +81,9 @@ cd markcalm
 
 Open **`MarkCalm.xcodeproj`** in Xcode (double-click or `open MarkCalm.xcodeproj`).
 
-Wait for **File → Packages → Resolve Package Versions** to finish. Dependencies:
+Swift Package dependencies are pinned in `MarkCalm.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved` (required for Xcode Cloud and CI). After changing dependencies in Xcode, commit the updated lockfile.
+
+Packages:
 
 - [swift-markdown-ui](https://github.com/gonzalezreal/swift-markdown-ui) (≥ 2.4.1)
 - [Yams](https://github.com/jpsim/Yams) (≥ 5.0.0)
@@ -156,7 +93,7 @@ Wait for **File → Packages → Resolve Package Versions** to finish. Dependenc
 1. In the project navigator, select the **MarkCalm** project → **MarkCalm** target.
 2. Open **Signing & Capabilities**.
 3. Enable **Automatically manage signing**.
-4. Choose your **Team** (personal Apple ID is fine for local development).
+4. Choose your **Team** (Developer Program team `K2967B5G85` for distribution; personal Apple ID is fine for local development).
 
 ### 5. Build and run
 
@@ -195,44 +132,100 @@ A successful build produces `MarkCalm.app` under Xcode's DerivedData. Running fr
 
 ---
 
-## Using the app
+## Publishing releases
 
-### Settings
+Public releases are **signed and notarized** Developer ID builds uploaded to [GitHub Releases](https://github.com/karmatosed/markcalm/releases).
 
-**MarkCalm → Settings** (⌘,)
+### Signed + notarized (recommended)
 
-| Setting | Default | Notes |
-|---------|---------|-------|
-| Theme | System | System / Light / Dark |
-| Show reading progress | **Off** | Turn on to see the scroll progress bar |
-| Progress bar position | Top | Top or Bottom (when progress is enabled) |
+**Prerequisites:** Apple Developer Program membership (Active), **Developer ID Application** certificate in Keychain, app-specific password from [appleid.apple.com](https://appleid.apple.com).
 
-The reading progress bar only moves when the document is **taller than the window** — shrink the window or use a long file to test it.
+```bash
+export APPLE_TEAM_ID="K2967B5G85"
+export APPLE_ID="you@example.com"
+export APPLE_APP_SPECIFIC_PASSWORD="xxxx-xxxx-xxxx-xxxx"
 
-### Set as default for `.md` files
+./scripts/build-release-dmg.sh
+# → build/MarkCalm.dmg (signed + notarized)
+```
 
-1. Right-click any `.md` file in Finder
-2. **Get Info → Open with → MarkCalm**
-3. Click **Change All…**
+Publish:
 
-Or accept the in-app prompt the first time you open a markdown file.
+```bash
+git tag v0.1.7 && git push origin v0.1.7
+
+gh release create v0.1.7 build/MarkCalm.dmg \
+  --title "v0.1.7 — signed & notarized" \
+  --notes "Signed and notarized build. Drag to Applications and double-click to open."
+```
+
+Or upload to an existing tag:
+
+```bash
+gh release upload v0.1.7 build/MarkCalm.dmg --clobber -R karmatosed/markcalm
+```
+
+### Configure Xcode signing (one time)
+
+1. **Xcode → Settings → Accounts** → add your Apple ID → select team **K2967B5G85**
+2. **Manage Certificates → + → Developer ID Application**
+3. **MarkCalm** target → **Signing & Capabilities** → **Automatically manage signing** → same team
+
+### Release from Xcode (alternative)
+
+1. Scheme **MarkCalm**, destination **Any Mac (arm64, x86_64)**
+2. **Product → Archive**
+3. Organizer → **Distribute App** → **Custom** → **Developer ID** → notarize → export `.dmg`
+4. Upload to [GitHub Releases](https://github.com/karmatosed/markcalm/releases)
+
+### Unsigned builds (CI / local testing)
+
+Tag pushes (`git push origin v*`) trigger GitHub Actions, which builds an **unsigned** `.dmg` by default:
+
+```bash
+./scripts/build-dmg.sh
+# → build/MarkCalm.dmg (unsigned — for local testing only)
+```
+
+Unsigned builds require a one-time Gatekeeper bypass — see [Troubleshooting](#unsigned-builds-gatekeeper).
+
+### Automated signed releases (GitHub Actions, optional)
+
+Add [repository secrets](https://github.com/karmatosed/markcalm/settings/secrets/actions):
+
+| Secret | Value |
+|--------|-------|
+| `APPLE_TEAM_ID` | `K2967B5G85` |
+| `APPLE_ID` | Apple ID email |
+| `APPLE_APP_SPECIFIC_PASSWORD` | App-specific password |
+| `APPLE_CERTIFICATE_BASE64` | `base64 -i DeveloperID.p12 \| pbcopy` |
+| `APPLE_CERTIFICATE_PASSWORD` | Password used when exporting the `.p12` |
+
+Then **Actions → Release → Run workflow** with **signed** checked.
+
+> **Note:** Tag pushes build **unsigned** DMGs in CI. Signed public releases are built locally with `./scripts/build-release-dmg.sh` and uploaded with `gh release upload`.
 
 ---
 
 ## Troubleshooting
 
-### “MarkCalm can't be opened” / “unidentified developer” (downloaded .dmg)
+### “MarkCalm can't be opened” / “unidentified developer”
 
-Expected for **unsigned** releases. Do **not** double-click the first time:
+This applies to **unsigned** builds only (CI tag releases, local `./scripts/build-dmg.sh`). **Signed releases** from GitHub should open normally.
+
+For unsigned builds:
 
 1. **Applications** → right-click **MarkCalm** → **Open** → **Open**, or
 2. `xattr -cr /Applications/MarkCalm.app`
 
-This is a one-time step per download. **Signed releases** (after Apple Developer is Active) won't need this.
+### Unsigned builds (Gatekeeper)
 
-### Apple Developer membership still "Pending"
+If you downloaded an unsigned CI build:
 
-You can't create Developer ID certificates or notarize until Apple activates your account (usually 24–48 hours for individuals). Until then, ship unsigned builds with `./scripts/build-dmg.sh` and the [install steps above](#install-required-for-unsigned-builds).
+1. Open the `.dmg` and drag **MarkCalm** to **Applications**
+2. **Right-click MarkCalm → Open** (first time only) → **Open**
+
+Or: `xattr -cr /Applications/MarkCalm.app`
 
 ### “xcodebuild requires Xcode” / “active developer directory … CommandLineTools”
 
@@ -242,15 +235,16 @@ Install full Xcode from the App Store, then:
 sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 ```
 
-### Packages fail to resolve
+### Packages fail to resolve / Xcode Cloud “resolved file is required”
 
+- `Package.resolved` is committed at `MarkCalm.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved` — do not gitignore it.
 - Check your network connection.
 - In Xcode: **File → Packages → Reset Package Caches**, then **Resolve Package Versions**.
 - From terminal: `xcodebuild -resolvePackageDependencies -scheme MarkCalm -destination 'platform=macOS'`
 
 ### Signing errors (“Signing for MarkCalm requires a development team”)
 
-**MarkCalm** target → **Signing & Capabilities** → enable **Automatically manage signing** → select your Team. A free Apple ID works for running on your own Mac.
+**MarkCalm** target → **Signing & Capabilities** → enable **Automatically manage signing** → select your Team. A free Apple ID works for running on your own Mac; Developer ID distribution requires a paid Apple Developer account.
 
 ### Build errors after pulling changes
 
@@ -276,8 +270,8 @@ Red errors in Xcode's **Issue navigator** matter. Grey lines in the debug consol
 MarkCalm/              SwiftUI app source
 MarkCalmTests/         Unit tests (MarkdownPipeline)
 Fixtures/sample.md     Sample markdown for manual testing
-MarkCalm.xcodeproj     Xcode project
-scripts/build-dmg.sh          Unsigned .dmg (testing)
+MarkCalm.xcodeproj     Xcode project (+ committed Package.resolved)
+scripts/build-dmg.sh          Unsigned .dmg (local testing / CI)
 scripts/build-release-dmg.sh  Signed + notarized .dmg (public releases)
 .github/workflows/     CI release workflow
 docs/                  Design spec and plans
@@ -292,27 +286,3 @@ AGENTS.md              Guidance for AI agents and contributors
 - [Documentation index](docs/spec.md)
 - [Design spec](docs/superpowers/specs/2026-06-10-markcalm-design.md)
 - [Implementation plan](docs/superpowers/plans/2026-06-10-markcalm.md)
-
----
-
-## Sharing with others (maintainers)
-
-### Now — unsigned `.dmg` (Apple Developer pending)
-
-| Step | Action |
-|------|--------|
-| Build | `./scripts/build-dmg.sh` → `build/MarkCalm.dmg` |
-| Publish | Upload to [GitHub Releases](https://github.com/karmatosed/markcalm/releases) or `gh release create v0.1.0 build/MarkCalm.dmg …` |
-| User install | [Right-click → Open once](#install-required-for-unsigned-builds) |
-
-Document in release notes that this is an **unsigned preview** and include the install steps.
-
-### After Apple Developer is Active — signed + notarized
-
-Users install normally — drag to Applications, double-click, done.
-
-| Step | Action |
-|------|--------|
-| Setup | [Signed releases](#apple-developer--signed-releases-when-membership-is-active) |
-| Build | `./scripts/build-release-dmg.sh` |
-| CI | GitHub secrets → `git tag v* && git push origin v*` |
