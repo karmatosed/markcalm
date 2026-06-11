@@ -5,31 +5,16 @@ struct ContentView: View {
     @Binding var document: MarkdownDocument
     let fileURL: URL?
 
-    @AppStorage(AppStorageKey.theme)
-    private var themeRawValue = AppTheme.system.rawValue
-
-    @AppStorage(AppStorageKey.showProgress)
-    private var showProgress = false
-
-    @AppStorage(AppStorageKey.progressPosition)
-    private var progressPositionRawValue = ProgressBarPosition.top.rawValue
-
-    private var theme: AppTheme {
-        AppTheme(rawValue: themeRawValue) ?? .system
-    }
+    @Environment(AppSettings.self) private var appSettings
 
     @State private var scrollProgress: CGFloat = 0
-
-    private var progressPosition: ProgressBarPosition {
-        ProgressBarPosition(rawValue: progressPositionRawValue) ?? .top
-    }
 
     private var baseURL: URL? {
         fileURL?.deletingLastPathComponent()
     }
 
     var body: some View {
-        ZStack(alignment: progressPosition == .top ? .top : .bottom) {
+        ZStack(alignment: appSettings.progressPosition == .top ? .top : .bottom) {
             TrackedScrollView(progress: $scrollProgress) {
                 ReadingContent(
                     markdown: document.processed.body,
@@ -37,14 +22,18 @@ struct ContentView: View {
                 )
             }
 
-            if showProgress {
+            if appSettings.showProgress {
                 ProgressBar(value: scrollProgress)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: progressPosition == .top ? .top : .bottom)
+                    .frame(
+                        maxWidth: .infinity,
+                        maxHeight: .infinity,
+                        alignment: appSettings.progressPosition == .top ? .top : .bottom
+                    )
             }
         }
         .background(Color(nsColor: .windowBackgroundColor))
         .navigationTitle(document.displayName(for: fileURL))
-        .preferredColorScheme(theme.colorScheme)
+        .preferredColorScheme(appSettings.theme.colorScheme)
         .defaultAppPrompt()
         .environment(\.openURL, OpenURLAction { url in
             NSWorkspace.shared.open(url)

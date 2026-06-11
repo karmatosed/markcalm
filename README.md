@@ -53,7 +53,7 @@ Apple Developer Program membership is **pending**. Once it becomes **Active**, f
 ### 3. Release from the command line
 
 ```bash
-export APPLE_TEAM_ID="XXXXXXXXXX"   # developer.apple.com → Membership details
+export APPLE_TEAM_ID="K2967B5G85"
 export APPLE_ID="you@example.com"
 export APPLE_APP_SPECIFIC_PASSWORD="xxxx-xxxx-xxxx-xxxx"  # appleid.apple.com → App-Specific Passwords
 

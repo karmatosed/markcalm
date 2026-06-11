@@ -1,36 +1,31 @@
 import SwiftUI
 
 struct SettingsView: View {
-    @AppStorage(AppStorageKey.theme)
-    private var themeRawValue = AppTheme.system.rawValue
-
-    @AppStorage(AppStorageKey.showProgress)
-    private var showProgress = false
-
-    @AppStorage(AppStorageKey.progressPosition)
-    private var progressPositionRawValue = ProgressBarPosition.top.rawValue
+    @Environment(AppSettings.self) private var appSettings
 
     var body: some View {
+        @Bindable var appSettings = appSettings
+
         Form {
             Section("Appearance") {
-                Picker("Theme", selection: $themeRawValue) {
+                Picker("Theme", selection: $appSettings.theme) {
                     ForEach(AppTheme.allCases) { option in
-                        Text(option.label).tag(option.rawValue)
+                        Text(option.label).tag(option)
                     }
                 }
                 .pickerStyle(.segmented)
             }
 
             Section("Reading") {
-                Toggle("Show reading progress", isOn: $showProgress)
+                Toggle("Show reading progress", isOn: $appSettings.showProgress)
 
-                Picker("Progress bar position", selection: $progressPositionRawValue) {
+                Picker("Progress bar position", selection: $appSettings.progressPosition) {
                     ForEach(ProgressBarPosition.allCases) { option in
-                        Text(option.label).tag(option.rawValue)
+                        Text(option.label).tag(option)
                     }
                 }
                 .pickerStyle(.segmented)
-                .disabled(!showProgress)
+                .disabled(!appSettings.showProgress)
             }
         }
         .formStyle(.grouped)

@@ -20,6 +20,7 @@
 		A100000100000000000000BB /* MarkdownUI in Frameworks */ = {isa = PBXBuildFile; productRef = A100000100000000000000D1 /* MarkdownUI */; };
 		A100000100000000000000BC /* Yams in Frameworks */ = {isa = PBXBuildFile; productRef = A100000100000000000000D2 /* Yams */; };
 		A100000100000000000000BD /* TrackedScrollView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000010000000000000033 /* TrackedScrollView.swift */; };
+		A100000100000000000000BE /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000010000000000000034 /* AppSettings.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -48,6 +49,7 @@
 		A10000010000000000000010 /* MarkCalm.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MarkCalm.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A10000010000000000000011 /* MarkCalmTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MarkCalmTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		A10000010000000000000033 /* TrackedScrollView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackedScrollView.swift; sourceTree = "<group>"; };
+		A10000010000000000000034 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -91,6 +93,7 @@
 				A10000010000000000000009 /* SettingsView.swift */,
 				A1000001000000000000000A /* DefaultAppPrompt.swift */,
 				A1000001000000000000000B /* AppPreferences.swift */,
+				A10000010000000000000034 /* AppSettings.swift */,
 				A1000001000000000000000C /* Assets.xcassets */,
 				A1000001000000000000000D /* Info.plist */,
 				A1000001000000000000000E /* MarkCalm.entitlements */,
@@ -223,6 +226,7 @@
 				A100000100000000000000B7 /* DefaultAppPrompt.swift in Sources */,
 				A100000100000000000000B8 /* AppPreferences.swift in Sources */,
 				A100000100000000000000BD /* TrackedScrollView.swift in Sources */,
+				A100000100000000000000BE /* AppSettings.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -253,6 +257,7 @@
 				CLANG_ENABLE_OBJC_ARC = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = K2967B5G85;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				GCC_DYNAMIC_NO_PIC = NO;
@@ -273,6 +278,7 @@
 				CLANG_ENABLE_OBJC_ARC = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = K2967B5G85;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
