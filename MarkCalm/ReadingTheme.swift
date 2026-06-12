@@ -19,7 +19,7 @@ struct ReadingContent: View {
             .markdownTheme(ReadingTheme.calm)
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: 680, alignment: .leading)
-            .frame(maxWidth: .infinity, alignment: .top)
+            .frame(maxWidth: .infinity, alignment: .topLeading)
             .padding(.horizontal, 40)
             .padding(.vertical, 48)
             .textSelection(.enabled)

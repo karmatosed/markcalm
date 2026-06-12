@@ -1,6 +1,12 @@
 import MarkdownUI
 import SwiftUI
 
+@MainActor
+@Observable
+final class ScrollProgress {
+    var value: CGFloat = 0
+}
+
 struct ContentView: View {
     @Binding var document: MarkdownDocument
     let fileURL: URL?
@@ -29,6 +35,22 @@ struct ContentView: View {
     }
 }
 
+private struct ScrollContentHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
+}
+
+private struct ScrollOffsetKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
 /// Isolates scroll progress so progress updates do not re-render the scroll view.
 private struct ReadingScrollView: View {
     let markdown: String
@@ -37,6 +59,9 @@ private struct ReadingScrollView: View {
     let progressPosition: ProgressBarPosition
 
     @State private var scrollProgress = ScrollProgress()
+    @State private var contentHeight: CGFloat = 0
+    @State private var viewportHeight: CGFloat = 0
+    @State private var scrollOffset: CGFloat = 0
 
     var body: some View {
         VStack(spacing: 0) {
@@ -44,19 +69,64 @@ private struct ReadingScrollView: View {
                 ProgressIndicator(progress: scrollProgress)
             }
 
-            TrackedScrollView(progress: scrollProgress) {
+            ScrollView {
                 ReadingContent(
                     markdown: markdown,
                     baseURL: baseURL
                 )
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+                .background {
+                    GeometryReader { geometry in
+                        Color.clear
+                            .preference(
+                                key: ScrollContentHeightKey.self,
+                                value: geometry.size.height
+                            )
+                            .preference(
+                                key: ScrollOffsetKey.self,
+                                value: geometry.frame(in: .named("readingScroll")).minY
+                            )
+                    }
+                }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .coordinateSpace(name: "readingScroll")
+            .background {
+                GeometryReader { geometry in
+                    Color.clear
+                        .onAppear {
+                            viewportHeight = geometry.size.height
+                            updateScrollProgress()
+                        }
+                        .onChange(of: geometry.size.height) { _, height in
+                            viewportHeight = height
+                            updateScrollProgress()
+                        }
+                }
+            }
+            .onPreferenceChange(ScrollContentHeightKey.self) { height in
+                contentHeight = height
+                updateScrollProgress()
+            }
+            .onPreferenceChange(ScrollOffsetKey.self) { offset in
+                scrollOffset = offset
+                updateScrollProgress()
+            }
 
             if showProgress, progressPosition == .bottom {
                 ProgressIndicator(progress: scrollProgress)
             }
         }
         .id(markdown)
+    }
+
+    private func updateScrollProgress() {
+        let scrollable = contentHeight - viewportHeight
+        guard scrollable > 1 else {
+            scrollProgress.value = 1
+            return
+        }
+
+        scrollProgress.value = min(max(-scrollOffset / scrollable, 0), 1)
     }
 }
 
