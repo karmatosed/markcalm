@@ -13,24 +13,25 @@ struct ContentView: View {
         fileURL?.deletingLastPathComponent()
     }
 
-    private var progressEdge: VerticalEdge {
-        appSettings.progressPosition == .top ? .top : .bottom
-    }
-
     var body: some View {
-        TrackedScrollView(progress: $scrollProgress) {
-            ReadingContent(
-                markdown: document.processed.body,
-                baseURL: baseURL
-            )
-        }
-        .id(document.processed.body)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .safeAreaInset(edge: progressEdge, spacing: 0) {
-            if appSettings.showProgress {
+        VStack(spacing: 0) {
+            if appSettings.showProgress, appSettings.progressPosition == .top {
+                ProgressBar(value: scrollProgress)
+            }
+
+            TrackedScrollView(progress: $scrollProgress) {
+                ReadingContent(
+                    markdown: document.processed.body,
+                    baseURL: baseURL
+                )
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            if appSettings.showProgress, appSettings.progressPosition == .bottom {
                 ProgressBar(value: scrollProgress)
             }
         }
+        .id(document.processed.body)
         .background(Color(nsColor: .windowBackgroundColor))
         .navigationTitle(document.displayName(for: fileURL))
         .preferredColorScheme(appSettings.theme.colorScheme)

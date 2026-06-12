@@ -63,6 +63,7 @@ struct TrackedScrollView<Content: View>: NSViewRepresentable {
         private var layoutRefreshWorkItems: [DispatchWorkItem] = []
         private var lastLayoutWidth: CGFloat = 0
         private var lastContentHeight: CGFloat = 0
+        private var didInitialScrollToTop = false
 
         init(progress: Binding<CGFloat>) {
             self.progress = progress
@@ -92,7 +93,11 @@ struct TrackedScrollView<Content: View>: NSViewRepresentable {
         }
 
         func refreshLayoutAndProgress() {
-            updateLayout(force: true)
+            let scrollToTop = !didInitialScrollToTop
+            updateLayout(force: true, scrollToTop: scrollToTop)
+            if scrollToTop {
+                didInitialScrollToTop = true
+            }
             updateProgress()
         }
 
@@ -103,7 +108,7 @@ struct TrackedScrollView<Content: View>: NSViewRepresentable {
             updateLayout(force: true)
         }
 
-        func updateLayout(force: Bool = false) {
+        func updateLayout(force: Bool = false, scrollToTop: Bool = false) {
             guard let scrollView, let containerView, let hostingView else { return }
 
             let clipView = scrollView.contentView
@@ -132,7 +137,11 @@ struct TrackedScrollView<Content: View>: NSViewRepresentable {
                 scrollView.documentView = containerView
             }
 
-            clipView.scroll(to: savedOrigin)
+            if scrollToTop {
+                clipView.scroll(to: NSPoint(x: 0, y: 0))
+            } else {
+                clipView.scroll(to: savedOrigin)
+            }
             scrollView.reflectScrolledClipView(clipView)
         }
 
@@ -155,7 +164,8 @@ struct TrackedScrollView<Content: View>: NSViewRepresentable {
             width: CGFloat
         ) -> CGFloat {
             hostingView.sizingOptions = .minSize
-            hostingView.setFrameSize(NSSize(width: width, height: 0))
+            // Height 0 clips markdown during measurement and trims the top of the document.
+            hostingView.setFrameSize(NSSize(width: width, height: 10_000))
             hostingView.layoutSubtreeIfNeeded()
 
             let height = hostingView.fittingSize.height
