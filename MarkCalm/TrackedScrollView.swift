@@ -1,17 +1,23 @@
 import AppKit
 import SwiftUI
 
+@MainActor
+@Observable
+final class ScrollProgress {
+    var value: CGFloat = 0
+}
+
 struct TrackedScrollView<Content: View>: NSViewRepresentable {
-    @Binding var progress: CGFloat
+    let progress: ScrollProgress
     let content: Content
 
-    init(progress: Binding<CGFloat>, @ViewBuilder content: () -> Content) {
-        _progress = progress
+    init(progress: ScrollProgress, @ViewBuilder content: () -> Content) {
+        self.progress = progress
         self.content = content()
     }
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(progress: $progress)
+        Coordinator(progress: progress)
     }
 
     func makeNSView(context: Context) -> NSScrollView {
@@ -21,6 +27,7 @@ struct TrackedScrollView<Content: View>: NSViewRepresentable {
         scrollView.hasHorizontalScroller = false
         scrollView.autohidesScrollers = true
         scrollView.borderType = .noBorder
+        scrollView.postsFrameChangedNotifications = true
         scrollView.contentView.postsBoundsChangedNotifications = true
 
         let container = FlippedContainerView()
@@ -41,7 +48,14 @@ struct TrackedScrollView<Content: View>: NSViewRepresentable {
             object: scrollView.contentView
         )
 
-        context.coordinator.scheduleInitialLayoutRefresh()
+        NotificationCenter.default.addObserver(
+            context.coordinator,
+            selector: #selector(Coordinator.viewFrameDidChange),
+            name: NSView.frameDidChangeNotification,
+            object: scrollView
+        )
+
+        context.coordinator.scheduleInitialLayout()
 
         return scrollView
     }
@@ -52,80 +66,79 @@ struct TrackedScrollView<Content: View>: NSViewRepresentable {
 
     static func dismantleNSView(_ scrollView: NSScrollView, coordinator: Coordinator) {
         NotificationCenter.default.removeObserver(coordinator)
-        coordinator.cancelPendingLayoutRefresh()
+        coordinator.cancelPendingLayout()
     }
 
     final class Coordinator: NSObject {
-        var progress: Binding<CGFloat>
+        let progress: ScrollProgress
         weak var scrollView: NSScrollView?
         weak var containerView: FlippedContainerView?
         var hostingView: NSHostingView<Content>?
-        private var layoutRefreshWorkItems: [DispatchWorkItem] = []
+        private var layoutWorkItems: [DispatchWorkItem] = []
         private var lastLayoutWidth: CGFloat = 0
         private var lastContentHeight: CGFloat = 0
+        private var lastReportedProgress: CGFloat = -1
         private var didInitialScrollToTop = false
 
-        init(progress: Binding<CGFloat>) {
+        init(progress: ScrollProgress) {
             self.progress = progress
         }
 
         @objc func scrollDidChange() {
-            updateLayoutIfWidthChanged()
-            updateProgress()
+            let fraction = currentProgressFraction()
+            Task { @MainActor in
+                applyProgress(fraction)
+            }
         }
 
-        func scheduleInitialLayoutRefresh() {
-            cancelPendingLayoutRefresh()
+        @objc func viewFrameDidChange() {
+            Task { @MainActor in
+                updateLayout(preserveScrollPosition: true)
+            }
+        }
 
-            let delays: [TimeInterval] = [0, 0.1, 0.35]
-            for delay in delays {
+        func scheduleInitialLayout() {
+            cancelPendingLayout()
+
+            for delay in [0.0, 0.15] as [TimeInterval] {
                 let work = DispatchWorkItem { [weak self] in
-                    self?.refreshLayoutAndProgress()
+                    Task { @MainActor in
+                        guard let self else { return }
+                        let scrollToTop = !self.didInitialScrollToTop
+                        self.updateLayout(preserveScrollPosition: !scrollToTop, scrollToTop: scrollToTop)
+                        if scrollToTop {
+                            self.didInitialScrollToTop = true
+                        }
+                        self.applyProgress(self.currentProgressFraction())
+                    }
                 }
-                layoutRefreshWorkItems.append(work)
+                layoutWorkItems.append(work)
                 DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
             }
         }
 
-        func cancelPendingLayoutRefresh() {
-            layoutRefreshWorkItems.forEach { $0.cancel() }
-            layoutRefreshWorkItems.removeAll()
+        func cancelPendingLayout() {
+            layoutWorkItems.forEach { $0.cancel() }
+            layoutWorkItems.removeAll()
         }
 
-        func refreshLayoutAndProgress() {
-            let scrollToTop = !didInitialScrollToTop
-            updateLayout(force: true, scrollToTop: scrollToTop)
-            if scrollToTop {
-                didInitialScrollToTop = true
-            }
-            updateProgress()
-        }
-
-        func updateLayoutIfWidthChanged() {
-            guard let scrollView else { return }
-            let width = max(scrollView.contentView.bounds.width, 1)
-            guard abs(width - lastLayoutWidth) >= 1 else { return }
-            updateLayout(force: true)
-        }
-
-        func updateLayout(force: Bool = false, scrollToTop: Bool = false) {
+        @MainActor
+        func updateLayout(preserveScrollPosition: Bool, scrollToTop: Bool = false) {
             guard let scrollView, let containerView, let hostingView else { return }
 
             let clipView = scrollView.contentView
             let width = max(clipView.bounds.width, 1)
-            hostingView.layoutSubtreeIfNeeded()
+            let savedOrigin = clipView.bounds.origin
 
+            hostingView.layoutSubtreeIfNeeded()
             let contentHeight = Self.measuredContentHeight(hostingView: hostingView, width: width)
             let visibleHeight = clipView.bounds.height
             let documentHeight = max(contentHeight, visibleHeight)
 
-            if !force,
-               abs(width - lastLayoutWidth) < 1,
+            if abs(width - lastLayoutWidth) < 1,
                abs(contentHeight - lastContentHeight) < 1 {
                 return
             }
-
-            let savedOrigin = clipView.bounds.origin
 
             lastLayoutWidth = width
             lastContentHeight = contentHeight
@@ -138,25 +151,31 @@ struct TrackedScrollView<Content: View>: NSViewRepresentable {
             }
 
             if scrollToTop {
-                clipView.scroll(to: NSPoint(x: 0, y: 0))
-            } else {
-                clipView.scroll(to: savedOrigin)
+                clipView.scroll(to: .zero)
+            } else if preserveScrollPosition {
+                clipView.setBoundsOrigin(savedOrigin)
             }
+
             scrollView.reflectScrolledClipView(clipView)
         }
 
-        func updateProgress() {
-            guard let scrollView, let documentView = scrollView.documentView else { return }
+        func currentProgressFraction() -> CGFloat {
+            guard let scrollView, let documentView = scrollView.documentView else { return 0 }
 
             let visibleRect = scrollView.contentView.documentVisibleRect
             let scrollable = documentView.frame.height - visibleRect.height
 
-            guard scrollable > 1 else {
-                progress.wrappedValue = 1
-                return
+            if scrollable > 1 {
+                return min(max(visibleRect.origin.y / scrollable, 0), 1)
             }
+            return 1
+        }
 
-            progress.wrappedValue = min(max(visibleRect.origin.y / scrollable, 0), 1)
+        @MainActor
+        func applyProgress(_ fraction: CGFloat) {
+            guard abs(fraction - lastReportedProgress) > 0.001 else { return }
+            lastReportedProgress = fraction
+            progress.value = fraction
         }
 
         private static func measuredContentHeight(
@@ -164,7 +183,6 @@ struct TrackedScrollView<Content: View>: NSViewRepresentable {
             width: CGFloat
         ) -> CGFloat {
             hostingView.sizingOptions = .minSize
-            // Height 0 clips markdown during measurement and trims the top of the document.
             hostingView.setFrameSize(NSSize(width: width, height: 10_000))
             hostingView.layoutSubtreeIfNeeded()
 
